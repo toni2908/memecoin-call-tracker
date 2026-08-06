@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-06T20:09:36.663441+00:00",
+  "updated_at": "2026-08-06T20:10:37.726030+00:00",
   "calls": [
     {
       "caller": "kookcapital",
@@ -7,14 +7,14 @@
       "contract": "0x0c25aa36986e0ae904d0233695e828d08a065fe2",
       "called_at": "2026-08-06T20:02:36+00:00",
       "called_mc": 388500.0,
-      "current_x": 1.0534253578732105,
-      "peak_x": 1.0534253578732105,
+      "current_x": 1.1382924335378322,
+      "peak_x": 1.1382924335378322,
       "fresh": true,
       "chain": "robinhood",
       "dex": "uniswap",
-      "current_mc": 412108.0,
-      "peak_value_eur": 1.0534253578732105,
-      "current_value_eur": 1.0534253578732105,
+      "current_mc": 445382.0,
+      "peak_value_eur": 1.1382924335378322,
+      "current_value_eur": 1.1382924335378322,
       "status": "open"
     }
   ]
