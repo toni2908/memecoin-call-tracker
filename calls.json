@@ -1,4 +1,21 @@
 {
-  "updated_at": "2026-08-06T20:02:27.172074+00:00",
-  "calls": []
+  "updated_at": "2026-08-06T20:03:28.197079+00:00",
+  "calls": [
+    {
+      "caller": "kookcapital",
+      "token": "FP",
+      "contract": "0x0c25aa36986e0ae904d0233695e828d08a065fe2",
+      "called_at": "2026-08-06T20:02:36+00:00",
+      "called_mc": 388500.0,
+      "current_x": 1.0,
+      "peak_x": 1.0,
+      "fresh": true,
+      "chain": "robinhood",
+      "dex": "uniswap",
+      "current_mc": 391275.0,
+      "peak_value_eur": 1.0,
+      "current_value_eur": 1.0,
+      "status": "open"
+    }
+  ]
 }
