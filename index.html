@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Memecoin Call Tracker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="header">
+    <div>
+      <p class="eyebrow">READ-ONLY ANALYTICS</p>
+      <h1>Memecoin Call Tracker</h1>
+      <p class="muted">No login, wallet connection, or download required.</p>
+    </div>
+    <div class="updated">
+      <span>Last updated</span>
+      <strong id="updatedAt">Loading…</strong>
+    </div>
+  </header>
+
+  <main>
+    <section class="metrics">
+      <article><span>Tracked callers</span><strong id="callerCount">—</strong></article>
+      <article><span>Total calls</span><strong id="callCount">—</strong></article>
+      <article><span>Fresh calls</span><strong id="freshCount">—</strong></article>
+      <article><span>Best X</span><strong id="bestX">—</strong></article>
+    </section>
+
+    <section class="controls">
+      <label>
+        Search
+        <input id="search" type="search" placeholder="Caller or token">
+      </label>
+      <label>
+        View
+        <select id="view">
+          <option value="callers">Caller leaderboard</option>
+          <option value="calls">All calls</option>
+        </select>
+      </label>
+      <label>
+        Freshness
+        <select id="freshness">
+          <option value="all">All</option>
+          <option value="fresh">Fresh only</option>
+          <option value="old">Previously called</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading">
+        <h2 id="title">Caller leaderboard</h2>
+        <p id="description" class="muted">Click a caller to filter their calls.</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead id="thead"></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <p id="empty" class="empty" hidden>No matching records.</p>
+    </section>
+
+    <section class="panel legend">
+      <h2>Column legend</h2>
+      <div class="legend-grid">
+        <p><strong>Portfolio X:</strong> final value divided by €1 invested in every call.</p>
+        <p><strong>Net profit:</strong> final value minus the total €1-per-call investment.</p>
+        <p><strong>Called MC:</strong> market cap shown when the call was made.</p>
+        <p><strong>Fresh:</strong> Rick replied to that exact message with “You are first”.</p>
+        <p><strong>Current X:</strong> current value relative to entry.</p>
+        <p><strong>Peak X:</strong> highest tracked return after the call.</p>
+      </div>
+    </section>
+
+    <footer>Analytics only. Not financial advice. Data may be delayed or incomplete.</footer>
+  </main>
+
+  <script>
+    const state = { calls: [], updatedAt: null, view: "callers", search: "", freshness: "all" };
+    const $ = (id) => document.getElementById(id);
+    const esc = (v) => String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;");
+    const fmtX = (v) => Number.isFinite(Number(v)) ? `${Number(v).toFixed(2)}x` : "—";
+    const fmtPct = (v) => Number.isFinite(Number(v)) ? `${(Number(v) * 100).toFixed(1)}%` : "—";
+    const fmtMoney = (v) => Number.isFinite(Number(v))
+      ? new Intl.NumberFormat("en", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(Number(v))
+      : "—";
+    const fmtDate = (v) => {
+      if (!v) return "—";
+      const d = new Date(v);
+      return Number.isNaN(d.getTime()) ? "—" : new Intl.DateTimeFormat("en-GB", {
+        dateStyle: "medium", timeStyle: "short"
+      }).format(d);
+    };
+
+    function filteredCalls() {
+      const q = state.search.trim().toLowerCase();
+      return state.calls.filter((call) => {
+        const freshOk =
+          state.freshness === "all" ||
+          (state.freshness === "fresh" && call.fresh === true) ||
+          (state.freshness === "old" && call.fresh === false);
+
+        const searchable = [
+          call.caller, call.token, call.contract, call.chain
+        ].join(" ").toLowerCase();
+
+        return freshOk && (!q || searchable.includes(q));
+      });
+    }
+
+    function callerRows(calls) {
+      const grouped = new Map();
+
+      for (const call of calls) {
+        const caller = call.caller || "Unknown";
+        if (!grouped.has(caller)) grouped.set(caller, []);
+        grouped.get(caller).push(call);
+      }
+
+      return [...grouped.entries()].map(([caller, items]) => {
+        const values = items.map((item) => Number(item.peak_x) || 0);
+        const finalValue = values.reduce((sum, value) => sum + value, 0);
+        const totalCalls = items.length;
+        const wins = values.filter((value) => value >= 2).length;
+        const best = items.reduce((a, b) =>
+          (Number(b.peak_x) || 0) > (Number(a.peak_x) || 0) ? b : a
+        , items[0]);
+
+        return {
+          caller,
+          totalCalls,
+          wins,
+          winRate: totalCalls ? wins / totalCalls : 0,
+          portfolioX: totalCalls ? finalValue / totalCalls : 0,
+          netProfit: finalValue - totalCalls,
+          bestX: Number(best?.peak_x) || 0,
+          bestToken: best?.token || "—"
+        };
+      }).sort((a, b) =>
+        b.portfolioX - a.portfolioX ||
+        b.totalCalls - a.totalCalls ||
+        b.winRate - a.winRate
+      );
+    }
+
+    function renderSummary() {
+      const callers = new Set(state.calls.map((call) => call.caller));
+      const freshCalls = state.calls.filter((call) => call.fresh === true).length;
+      const best = Math.max(0, ...state.calls.map((call) => Number(call.peak_x) || 0));
+
+      $("callerCount").textContent = callers.size;
+      $("callCount").textContent = state.calls.length;
+      $("freshCount").textContent = freshCalls;
+      $("bestX").textContent = fmtX(best);
+      $("updatedAt").textContent = fmtDate(state.updatedAt);
+    }
+
+    function renderCallerTable(calls) {
+      const rows = callerRows(calls);
+
+      $("title").textContent = "Caller leaderboard";
+      $("description").textContent = "Click a caller to show only their calls.";
+      $("thead").innerHTML = `
+        <tr>
+          <th>Rank</th><th>Caller</th><th>Calls</th><th>Wins</th>
+          <th>Win rate</th><th>Portfolio X</th><th>Net profit</th>
+          <th>Best X</th><th>Best token</th>
+        </tr>`;
+
+      $("tbody").innerHTML = rows.map((row, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td><button class="caller-link" data-caller="${encodeURIComponent(row.caller)}">${esc(row.caller)}</button></td>
+          <td>${row.totalCalls}</td>
+          <td>${row.wins}</td>
+          <td>${fmtPct(row.winRate)}</td>
+          <td><strong>${fmtX(row.portfolioX)}</strong></td>
+          <td class="${row.netProfit >= 0 ? "positive" : "negative"}">${row.netProfit >= 0 ? "+" : ""}€${row.netProfit.toFixed(2)}</td>
+          <td>${fmtX(row.bestX)}</td>
+          <td>${esc(row.bestToken)}</td>
+        </tr>
+      `).join("");
+
+      document.querySelectorAll(".caller-link").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.search = decodeURIComponent(button.dataset.caller);
+          $("search").value = state.search;
+          state.view = "calls";
+          $("view").value = "calls";
+          render();
+        });
+      });
+
+      $("empty").hidden = rows.length > 0;
+    }
+
+    function renderCallsTable(calls) {
+      const rows = [...calls].sort((a, b) => new Date(b.called_at) - new Date(a.called_at));
+
+      $("title").textContent = "All calls";
+      $("description").textContent = "Every tracked call with entry, current and peak performance.";
+      $("thead").innerHTML = `
+        <tr>
+          <th>Caller</th><th>Token</th><th>Called at</th><th>Called MC</th>
+          <th>Current X</th><th>Peak X</th><th>Fresh</th><th>Chain</th>
+        </tr>`;
+
+      $("tbody").innerHTML = rows.map((call) => `
+        <tr>
+          <td>${esc(call.caller || "Unknown")}</td>
+          <td>${esc(call.token || "—")}</td>
+          <td>${fmtDate(call.called_at)}</td>
+          <td>${fmtMoney(call.called_mc)}</td>
+          <td>${fmtX(call.current_x)}</td>
+          <td><strong>${fmtX(call.peak_x)}</strong></td>
+          <td><span class="badge ${call.fresh ? "fresh" : "old"}">${call.fresh ? "Fresh" : "Old"}</span></td>
+          <td>${esc(call.chain || "—")}</td>
+        </tr>
+      `).join("");
+
+      $("empty").hidden = rows.length > 0;
+    }
+
+    function render() {
+      const calls = filteredCalls();
+      state.view === "calls" ? renderCallsTable(calls) : renderCallerTable(calls);
+    }
+
+    async function loadData() {
+      try {
+        const response = await fetch(`calls.json?v=${Date.now()}`, { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await response.json();
+
+        state.calls = Array.isArray(payload.calls) ? payload.calls : [];
+        state.updatedAt = payload.updated_at || null;
+
+        renderSummary();
+        render();
+      } catch (error) {
+        $("updatedAt").textContent = "Data unavailable";
+        $("empty").hidden = false;
+        $("empty").textContent = "Could not load calls.json.";
+        console.error(error);
+      }
+    }
+
+    $("search").addEventListener("input", (event) => {
+      state.search = event.target.value;
+      render();
+    });
+
+    $("view").addEventListener("change", (event) => {
+      state.view = event.target.value;
+      render();
+    });
+
+    $("freshness").addEventListener("change", (event) => {
+      state.freshness = event.target.value;
+      render();
+    });
+
+    loadData();
+  </script>
+</body>
+</html>

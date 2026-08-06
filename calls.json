@@ -1,0 +1,27 @@
+{
+  "updated_at": "2026-08-06T19:30:00Z",
+  "calls": [
+    {
+      "caller": "Soul",
+      "token": "SALARY CAT",
+      "contract": "0xc73e1b136c576d1429cb84522a8c35c81d9d7777",
+      "called_at": "2026-08-06T11:01:00Z",
+      "called_mc": 487800,
+      "current_x": 1.56,
+      "peak_x": 1.56,
+      "fresh": true,
+      "chain": "BNB"
+    },
+    {
+      "caller": "kookcapital",
+      "token": "EXAMPLE",
+      "contract": "0x0000000000000000000000000000000000000001",
+      "called_at": "2026-08-05T18:20:00Z",
+      "called_mc": 85000,
+      "current_x": 2.4,
+      "peak_x": 4.2,
+      "fresh": true,
+      "chain": "Base"
+    }
+  ]
+}
